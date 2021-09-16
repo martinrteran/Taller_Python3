@@ -12,7 +12,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 import requests
-import urllib.request, urllib.parse, urllib.error
+import urllib.parse, urllib.error
+
 
 # -------------------------------------------------------
 # First it comes the users Interface with the selectors
@@ -68,6 +69,7 @@ def separate_season(dates,latitud=0):
             pass
     return seasons
 
+
 '''
 *OBTAIN THE DATA AND PLOT DATA ABOUT THE SUN POSITION*
 ------------------------------------------------------
@@ -78,6 +80,7 @@ def separate_season(dates,latitud=0):
 api_key = 42
 serviceurl = "http://py4e-data.dr-chuck.net/json?"
 
+
 # Ask the user the location, equals \n if nothing is introduce
 address=st.text_input("Introduce the location")
 
@@ -87,7 +90,7 @@ st.sidebar.title("Selection panel")
 # declare the interval of time
 st.sidebar.subheader("Range of time")
 end_date=st.sidebar.date_input("End date")
-start_date=st.sidebar.date_input("Start date",key=str,max_value=end_date)
+start_date=st.sidebar.date_input("Start date",max_value=end_date)
 end_date=end_date.isoformat()
 start_date=start_date.isoformat()
 
@@ -147,7 +150,7 @@ if address!="" and address!=None:
 
 
     # ------------------------------------------------------
-    #     Continue if there is a Json file non-Empty       
+    #     Continue if the Json file is no-Empty       
     # -------------------------------------------------------
 
     if isopen == True and uh_json['status']=="OK":
@@ -170,8 +173,8 @@ if address!="" and address!=None:
             #               Obtaining all the data
             # -------------------------------------------------
 
-            times = pd.date_range(f'{start_date} 00:00:00', f'{end_date}', closed='left',
-                                freq='H')
+            times = pd.date_range(f'{start_date} 00:00:00', f'{end_date}', 
+                    closed='left',freq='H')
             solpos = solarposition.get_solarposition(times, lat, lon)
 
             # remove nighttime
@@ -204,10 +207,28 @@ if address!="" and address!=None:
             # Creates the line plot if the users wants it
             # and only if it is in the range
             if plotFlag is True and inRange is True:
-                figura=px.line(solpos[param2show],labels={param2show:"Degrees"},title="Plotting parameters")
+                figura=px.line(solpos[param2show],labels={param2show:"Degrees"},
+                            title="Plotting parameters")
                 figur=go.Figure(data=figura)
                 st.plotly_chart(figur)
 
+
+
+            # -----------------------------------------------------
+            #                   Extra Features
+            # -----------------------------------------------------
+
+            #    Option to "download" the data in a csv
+
+            #Prepare the pre-made file's name
+            faddress=faddress.replace(',',' ').replace('.',
+                    ' ').replace(':',' ').split()
+            faddress='_'.join(faddress)
+            pre_made=f"SolPos_{faddress}_{start_date}_{end_date}.csv"
+
+            # Use streamlit to create a download button of the file in csv
+            download_path=st.download_button("Download",solpos.to_csv(),
+                            pre_made,"text/csv")
 
             # ----------------------------------------------------------
             #              Calculates the mean and std desviation
@@ -219,4 +240,4 @@ if address!="" and address!=None:
 
     
 else:
-    st.title("Waiting for a location")
+    st.subheader("Waiting for a location")
