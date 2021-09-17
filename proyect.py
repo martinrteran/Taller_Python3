@@ -3,16 +3,13 @@
 This is the proyect developed during the 'Taller de Python'
 ----------------------------------------------------------
 '''
-
-
-from datetime import date, datetime
-from pvlib import solarposition
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
+from urllib import parse
 import requests
-import urllib.parse, urllib.error
+import streamlit as st
+from plotly import graph_objects as go
+from plotly import express as px
+import pandas as pd
+from pvlib import solarposition
 
 
 # -------------------------------------------------------
@@ -24,39 +21,38 @@ import urllib.parse, urllib.error
 # 3.- It asks for the dates
 # 4.- It retrieves it using PVlib
 # 5.- And it graphs the one that is selected
-# 6.- If the users wants it can calculated the average by hour and day of all years
-#------------------------------------------------------------
+# 6.- If the users wants it can calculated the average
+#           by hour and day of all years
+# ------------------------------------------------------------
 
 
-
- 
-#Separate in four parts one for each season
+# Separate in four parts one for each season
 
 # Define the function
-def separate_season(dates,latitud=0):
-    '''This function separates the dates by season 
+def separate_season(dates, latitud=0):
+    '''This function separates the dates by season
     depending in which hesmiphere the cursor is
     '''
     # Defines if it is in the north hemisphere or not
-    if latitud >=0:
-        north=True
+    if latitud >= 0:
+        north = True
     else:
-        north=False
+        north = False
     # Defines the dictionary to separete by season
-    seasons={"Spring":[],"Summer":[],"Autumn":[],"Winter":[]}
-    # For through each date and separetes it 
+    seasons = {"Spring": [], "Summer": [], "Autumn": [], "Winter": []}
+    # For through each date and separetes it
     for d in dates:
-        if (3,20)<(d.month,d.day)<=(6,21):
+        if (3, 20) < (d.month, d.day) <= (6, 21):
             if north:
                 seasons["Spring"].append(d)
             else:
                 seasons["Winter"].append(d)
-        elif (6,21)<(d.month,d.day)<=(9,22):
+        elif (6, 21) < (d.month, d.day) <= (9, 22):
             if north:
                 seasons["Summer"].append(d)
             else:
                 seasons["Autumn"].append(d)
-        elif (9,22)<(d.month,d.day)<=(12,2):
+        elif (9, 22) < (d.month, d.day) <= (12, 2):
             if north:
                 seasons["Autumn"].append(d)
             else:
@@ -68,6 +64,20 @@ def separate_season(dates,latitud=0):
                 seasons["Spring"].append(d)
             pass
     return seasons
+
+
+# Function recives selection and returns the correct string
+def to_freq(selection):
+    # Define the returned value to Hours
+    res = "H"
+    # If the option selected is any of the following
+    # it changes the value of the returned
+    if selection == "Minutes":
+        res = "min"
+    elif selection == "Seconds":
+        res = "S"
+    # Returns the option transformed
+    return res
 
 
 '''
@@ -82,90 +92,93 @@ serviceurl = "http://py4e-data.dr-chuck.net/json?"
 
 
 # Ask the user the location, equals \n if nothing is introduce
-address=st.text_input("Introduce the location")
+address = st.text_input("Introduce the location")
 
 # Declare the title for the sidebar
 st.sidebar.title("Selection panel")
 
 # declare the interval of time
 st.sidebar.subheader("Range of time")
-end_date=st.sidebar.date_input("End date")
-start_date=st.sidebar.date_input("Start date",max_value=end_date)
-end_date=end_date.isoformat()
-start_date=start_date.isoformat()
+end_date = st.sidebar.date_input("End date")
+start_date = st.sidebar.date_input("Start date", max_value=end_date)
+end_date = end_date.isoformat()
+start_date = start_date.isoformat()
 
 # Select the parameter
 st.sidebar.subheader("Options")
-options=["Elevation","Azimuth","Zenith"]
-selection=["Select","Elevation","Azimuth","Zenith","All"]
-param2show=st.sidebar.selectbox("Select the parameter",selection).lower()
+options = ["Elevation", "Azimuth", "Zenith"]
+selection = ["Select", "Elevation", "Azimuth", "Zenith", "All"]
+param2show = st.sidebar.selectbox("Select the parameter", selection).lower()
+
+# Select the frequency that you want to obtain the data
+sel = st.sidebar.select_slider("Select the frequency", [
+                               "Hours", "Minutes", "Seconds"])
+freq_sel = to_freq(sel)
 
 # Selection to Show Plot or to show data frame
-if param2show!='select':
-    dataFlag=st.sidebar.checkbox("Show data frame")
+if param2show != 'select':
+    dataFlag = st.sidebar.checkbox("Show data frame")
     if param2show == "all":
-        plotFlag=False
+        plotFlag = False
     else:
-        plotFlag=st.sidebar.checkbox("Show plot")
+        plotFlag = st.sidebar.checkbox("Show plot")
 else:
-    dataFlag=False
-    plotFlag=False
-
+    dataFlag = False
+    plotFlag = False
 
 
 # -------------------------------------------------------------------
 #    Run the rest of the program if an address has been introduced
 # -------------------------------------------------------------------
 
-if address!="" and address!=None:
+if address != "" and address is not None:
 
-    ##------------- Calls the API server and retrieve the data ----------
-    
+    # ------------- Calls the API server and retrieve the data ----------
+
     # Concatenates the parametres for the API request using a dictionary
     parms = dict()
     parms["address"] = address
-    if api_key is not False: parms['key'] = api_key
-    
+    if api_key is not False:
+        parms['key'] = api_key
+
     # Creates a unify url and request to retrieve the data
-    url = serviceurl + urllib.parse.urlencode(parms)
+    url = serviceurl + parse.urlencode(parms)
 
     # Request the API and if it fails it displays an error message
     try:
         st.text("Retrieving Data...")
-        urlhandler=requests.get(url)
-        isopen=True
+        urlhandler = requests.get(url)
+        isopen = True
 
-        # Parse the json  
-        uh_json=urlhandler.json()
+        # Parse the json
+        uh_json = urlhandler.json()
 
-        if uh_json['status']!="OK":
-            st.warning(f"Unable to find the address. \tTry another one")    
+        if uh_json['status'] != "OK":
+            st.warning(f"Unable to find the address. \tTry another one")
         else:
             st.success("Succesfuly retrieved")
-    except:
-        isopen=False
+    except BaseException:
+        isopen = False
         st.error("Unable to retrieve the data\nTry another location")
         pass
-    
-
 
     # ------------------------------------------------------
-    #     Continue if the Json file is no-Empty       
+    #     Continue if the Json file is no-Empty
     # -------------------------------------------------------
 
-    if isopen == True and uh_json['status']=="OK":
+    if isopen is True and uh_json['status'] == "OK":
 
         # Retrieve and separates the latitud and longitud
         # from the retrieving the data from the API
-        location=uh_json['results'][0]['geometry']['location']
-        lat=location['lat']
-        lon=location['lng']
+        location = uh_json['results'][0]['geometry']['location']
+        lat = location['lat']
+        lon = location['lng']
         # It shows the address from the API (gmaps)
-        faddress=uh_json['results'][0]['formatted_address']
+        faddress = uh_json['results'][0]['formatted_address']
         st.text(f"The retrived address is {faddress}")
-        st.header("Open the side panel to select the data")  
+        st.header("Open the side panel to select the data")
         # Is it the same day?
-        if start_date==end_date:
+        if start_date == end_date:
             st.text("No data.....")
         else:
 
@@ -173,46 +186,44 @@ if address!="" and address!=None:
             #               Obtaining all the data
             # -------------------------------------------------
 
-            times = pd.date_range(f'{start_date} 00:00:00', f'{end_date}', 
-                    closed='left',freq='H')
+            times = pd.date_range(f'{start_date} 00:00:00', f'{end_date}',
+                                  closed='left', freq=freq_sel)
             solpos = solarposition.get_solarposition(times, lat, lon)
 
             # remove nighttime
             solpos = solpos.loc[solpos['apparent_elevation'] > 0, :]
             # Separates dates by season to do calculations
-            seasons_date=separate_season(solpos.index,lat)
-
-
+            seasons_date = separate_season(solpos.index, lat)
 
             # -----------------------------------------------------------
-            #              Plot data frame if the users wants it       
+            #              Plot data frame if the users wants it
             # -----------------------------------------------------------
-            
+
             # Declare and define flags if the parameter
             # selected to plot is inside the variables
             # of the data frame
-            if param2show != 'select' and param2show!='all':
-                inRange=True
+            if param2show != 'select' and param2show != 'all':
+                inRange = True
             elif param2show == 'all':
-                inRange=False 
+                inRange = False
 
             # If the user wants to show the dataframe, display it
             if dataFlag is True:
                 #  Display the selection
-                if param2show != 'select' and param2show!='all':
+                if param2show != 'select' and param2show != 'all':
                     st.dataframe(solpos[param2show])
                 elif param2show == 'all':
-                    st.dataframe(solpos)     
+                    st.dataframe(solpos)
 
             # Creates the line plot if the users wants it
             # and only if it is in the range
             if plotFlag is True and inRange is True:
-                figura=px.line(solpos[param2show],labels={param2show:"Degrees"},
-                            title="Plotting parameters")
-                figur=go.Figure(data=figura)
+                figura = px.line(solpos[param2show],
+                                 labels={param2show: "Degrees"},
+                                 title="Plotting parameters",
+                                 )
+                figur = go.Figure(data=figura)
                 st.plotly_chart(figur)
-
-
 
             # -----------------------------------------------------
             #                   Extra Features
@@ -220,24 +231,28 @@ if address!="" and address!=None:
 
             #    Option to "download" the data in a csv
 
-            #Prepare the pre-made file's name
-            faddress=faddress.replace(',',' ').replace('.',
-                    ' ').replace(':',' ').split()
-            faddress='_'.join(faddress)
-            pre_made=f"SolPos_{faddress}_{start_date}_{end_date}.csv"
+            # Prepare the pre-made file's name
+            faddress = faddress.replace(
+                ',', ' ',
+            ).replace(
+                '.', ' ',
+            ).replace(
+                ':', ' ',
+            ).split()
+            faddress = '_'.join(faddress)
+            pre_made = f"SolPos_{faddress}_{start_date}_{end_date}.csv"
 
             # Use streamlit to create a download button of the file in csv
-            download_path=st.download_button("Download",solpos.to_csv(),
-                            pre_made,"text/csv")
+            download_path = st.download_button("Download", solpos.to_csv(),
+                                               pre_made, "text/csv")
 
             # ----------------------------------------------------------
             #              Calculates the mean and std desviation
             #                   by what the users decides
             # ----------------------------------------------------------
 
-            #Continue
+            # Continue
 
 
-    
 else:
     st.subheader("Waiting for a location")
